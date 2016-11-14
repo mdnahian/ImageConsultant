@@ -1,0 +1,125 @@
+<html>
+	<head>
+		<title>Facebook Login</title>
+		<script src="https://www.gstatic.com/firebasejs/3.6.0/firebase.js"></script>
+		 <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/socket.io/1.3.6/socket.io.min.js"></script> 
+		<script>
+
+		  var socket = io.connect('http://' + document.domain + ':' + location.port);
+ 		  var num_likes = 0;	          
+   
+		  // Initialize Firebase
+		  var config = {
+		    apiKey: "AIzaSyDCYnFAmqnb1k8ODBTPdfyOmRKN_Fosn1c",
+		    authDomain: "fb-post-analysis.firebaseapp.com",
+		    //databaseURL: "https://fb-post-analysis.firebaseio.com",
+		    storageBucket: "fb-post-analysis.appspot.com",
+		    messagingSenderId: "881346450995"
+		  };
+		  firebase.initializeApp(config);
+
+		  var provider = new firebase.auth.FacebookAuthProvider();
+		  
+		firebase.auth().signInWithPopup(provider).then(function(result) {
+		  // This gives you a Facebook Access Token. You can use it to access the Facebook API.
+		  var token = result.credential.accessToken;
+		  console.log(token);
+		  // The signed-in user info.
+		  var user = result.user;
+		  console.log(user);
+                 getFeed(user.providerData[0].uid, '/feed', token);   
+		    		  		
+  
+		}).catch(function(error) {
+		  // Handle Errors here.
+		  var errorCode = error.code;
+		  var errorMessage = error.message;
+		  // The email of the user's account used.
+		  var email = error.email;
+		  // The firebase.auth.AuthCredential type that was used.
+		  var credential = error.credential;
+		  console.log(error);
+		});
+
+
+		function getFeed(uid, request, token){
+		    var xmlhttp = new XMLHttpRequest();
+
+		    xmlhttp.onreadystatechange = function() {
+			if (xmlhttp.readyState == XMLHttpRequest.DONE ) {
+			   if (xmlhttp.status == 200) {
+			       //socket.emit('posts','{ "id": "'+uid+'", "response": ' + xmlhttp.responseText + ' }');       
+				//socket.emit('posts', 'hello');
+				console.log(xmlhttp.responseText);
+			       //window.close();
+
+				var json = JSON.parse(xmlhttp.responseText);
+				for(var i=0; i<json.data.length; i++){
+					var isLast = false;
+					var response = '';
+					if((json.data.length - 1) == i){
+						isLast = true;
+						response = xmlhttp.responseText;
+					}
+					getLikes(json.data[i].id, '/likes', token, isLast, response);
+				}
+			   }
+			   else if (xmlhttp.status == 400) {
+			      //console.log('Error 400');
+			   }
+			   else {
+			       //console.log('Error 200');
+			   }
+			}
+		    };
+
+		    xmlhttp.open("GET", "https://graph.facebook.com/"+uid+request+"?access_token="+token, true);
+		    xmlhttp.send();
+		}
+
+		function getLikes(uid, request, token, isLast, response){
+			var xmlhttp = new XMLHttpRequest();
+
+                    xmlhttp.onreadystatechange = function() {
+                        if (xmlhttp.readyState == XMLHttpRequest.DONE ) {
+                           if (xmlhttp.status == 200) {
+                               //socket.emit('posts','{ "id": "'+uid+'", "response": ' + xmlhttp.responseText + ' }');       
+                                //socket.emit('posts', 'hello');
+                                //console.log(xmlhttp.responseText);
+                               //window.close();
+                                var json = JSON.parse(xmlhttp.responseText);
+                                var likes = json.data.length;
+				num_likes += likes;				
+		
+				if(isLast == true){
+					socket.emit('posts','{ "id": "'+uid+'", "likes":'+num_likes+',  "response": ' + response  + ' }');  
+				}
+				 
+                           }
+                           else if (xmlhttp.status == 400) {
+                              //console.log('Error 400');
+                           }
+                           else {
+                               //console.log('Error 200');
+                           }
+                    	}
+		   }
+
+		   xmlhttp.open("GET", "https://graph.facebook.com/"+uid+request+"?access_token="+token, true);
+                   xmlhttp.send();
+
+		}
+
+		//socket.on('postsSuccess', function (data) {
+    		//	window.close();
+		//});
+
+                 
+		</script>
+		
+	</head>
+
+	<body>
+	
+	</body>
+</html>
